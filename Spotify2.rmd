@@ -1,0 +1,99 @@
+---
+title: "Spot"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r message=FALSE, paged.print=FALSE}
+options(knitr.table.format = 'markdown')
+library(spotifyr)
+library(knitr)
+# Removed access credentials
+access_token <- get_spotify_access_token()
+```
+
+```{r}
+spotify <- get_user_playlists("Spotify")
+first <- spotify[1,]
+```
+
+```{r}
+library(plyr)
+matched <- join(all_tracks,all_pop_feat, by="track_uri")
+unique <- matched[!duplicated(matched$track_uri),]
+```
+llllllllll
+```{r}
+goodbye_spoken <- unique
+major <- ifelse(goodbye_spoken[,13]=="major",1,0)
+all_track_data <- cbind(goodbye_spoken,major)
+goodbye_playlist <- all_track_data[,-1]
+goodbye_playlist_img <- goodbye_playlist[,-1]
+na_ECON <- goodbye_playlist_img[,-5]
+ECON <- na.omit(na_ECON)
+ECON$danceability2 <- (ECON$danceability)^2
+ECON$loudness2 <- (ECON$loudness)^2
+ECON$acousticness2 <- (ECON$acousticness)^2
+ECON$speechiness2 <- (ECON$speechiness)^2
+ECON$valence2 <- (ECON$valence)^2
+ECON$tempo2 <- (ECON$tempo)^2
+ECON$energy2 <- (ECON$energy)^2
+```
+
+not_read <- c(1:935,1014:1630)
+read <- c(936:1013)
+
+```{r}
+regreal <- lm(track_popularity~danceability+acousticness+speechiness+valence+major, data=ECON)
+summary(regreal)
+```
+
+```{r}
+library(sandwich)
+library(lmtest)
+corrected1 <- vcovHAC(regreal)
+coeftest(regreal, vcov=vcovHAC(regreal))
+```
+
+```{r}
+library(lmtest)
+regfake <- lm(track_popularity~danceability+acousticness+speechiness+major, data=ECON)
+summary(regfake)
+dwtest(regfake)
+```
+
+```{r}
+library(nlme)
+least <- gls(track_popularity~danceability+acousticness+speechiness+valence+major, data=ECON)
+summary(least)
+```
+
+```{r}
+quant <- c(5,6,7,9,11,12,13,14,15,16,20)
+quant_ECON <- ECON[,quant]
+cor(quant_ECON)
+```
+
+```{r}
+first_tracks <- get_playlist_tracks(first)
+first_pop <- get_track_popularity(first_tracks)
+first_features <- get_track_audio_features(first_tracks)
+all_pop_feat <- cbind (first_pop,first_features)
+all_tracks <- first_tracks
+for (i in 2:nrow(spotify)) {
+  current <- spotify[i,]
+  if(is.na(current$playlist_img)=="FALSE") {
+    if(current$playlist_num_tracks>0) {
+      current_tracks <- try(get_playlist_tracks(current, access_token))
+      current_pop <- try(get_track_popularity(current_tracks, access_token))
+      try(current_feat <- get_track_audio_features(current_tracks, access_token), silent=T)
+      try(current_pop_feat <- cbind(current_pop,current_feat), silent=T)
+      try(all_pop_feat <- rbind(all_pop_feat,current_pop_feat), silent=T)
+      all_tracks <- rbind(all_tracks,current_tracks)
+    }
+  }
+}
+```
